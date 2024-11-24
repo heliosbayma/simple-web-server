@@ -1,6 +1,7 @@
 use std::io::{ Read, Write };
 use std::net::TcpStream;
 use std::fs;
+use std::thread;
 
 use crate::http::{ HttpResponse, send_error_response };
 use crate::utils::{ MAX_REQUEST_SIZE, CONNECTION_TIMEOUT, get_file_path };
@@ -24,6 +25,9 @@ pub fn handle_connection(
   let mut request_parts = request_line.split_whitespace();
   request_parts.next(); // Skip the method
   let request_path = request_parts.next().unwrap_or("/");
+
+  println!("Path: {}", request_path);
+  println!("Thread Id: {:?}", thread::current().id());
 
   // Parse headers
   let mut headers = std::collections::HashMap::new();

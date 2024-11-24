@@ -37,9 +37,10 @@ Step 2.b (going out of scope for learning purposes):
 
 Step 3
 
-- Handle multiple requests concurrently with two approaches:
-  - Using a thread pool ([std::thread](https://doc.rust-lang.org/std/thread/))
-  - Using Tokio for async operations
+- Handle multiple requests concurrently with three approaches:
+  - Using threads spawn (not realistic for production)
+  - [TBD] Using a thread pool
+  - [TBD] Using Tokio for async operations
 - Added logging
 
 
