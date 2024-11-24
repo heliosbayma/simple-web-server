@@ -2,6 +2,7 @@
 
 A weekend exercise exploring Rust for the first time.
 Inspired by [Web Server Coding Challenge](https://codingchallenges.fyi/challenges/challenge-webserver/)
+Not worried about performance neither reinventing the wheel... for now its about exploring the language and getting confused.
 
 ## Features
 
@@ -24,6 +25,15 @@ Step 2.a:
 - Adds parsing of HTTP headers
 - Adds HTTP status codes to responses
 - Cleaner approach to path sanitization
+
+Step 2.b (going out of scope for learning purposes):
+
+- Connection timeout
+- Added structs and impl blocks for HttpResponse
+- Added consts for security limits
+- Improved logic for handle_connection: it's getting more readable but still a WIP
+- Improved error handling: also a WIP
+- Breaking main file into modules as it was getting too big
 
 
 ## Prerequisites
@@ -116,9 +126,12 @@ Path traversal attempts are not permitted
 ```text
 http_server/
 ├── www/             # Static files
-│   ├── index.html
+│   └── index.html
 ├── src/
-│   └── main.rs      # Server implementation
+│   ├── main.rs      # Server entry point
+│   ├── http.rs      # HTTP response struct and methods
+│   ├── server.rs    # Server implementation
+│   └── utils.rs     # Utility functions
 ├── Cargo.toml       # Project dependencies and metadata
 └── README.md        # This file
 ```
@@ -130,5 +143,10 @@ http_server/
 - No configuration options (fixed to localhost:80)
 
 ## Future Improvements
+
+- MIME type mapping (lazy_static! ???)
+- Add logging
+- Add tests
+
 
 see [Web Server Coding Challenge](https://codingchallenges.fyi/challenges/challenge-webserver/)
