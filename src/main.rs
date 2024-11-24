@@ -1,10 +1,7 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::fs;
-use std::path::{Path, PathBuf};
-
-// TODO:
-// - Replace unwrap with proper error handling
+use std::path::{PathBuf};
 
 // Handle incoming connections
 fn handle_connection(mut client_stream: TcpStream) {
@@ -12,75 +9,95 @@ fn handle_connection(mut client_stream: TcpStream) {
     let mut request_buffer = [0; 1024];
 
     // Read the request into the buffer
-    client_stream.read(&mut request_buffer).unwrap();
+    if let Ok(_) = client_stream.read(&mut request_buffer) {
+        // Convert buffer to string and get the first line
+        let http_request = String::from_utf8_lossy(&request_buffer[..]);
+        let request_line = http_request.lines().next().unwrap_or("");
 
-    // Convert buffer to string and get the first line
-    let http_request = String::from_utf8_lossy(&request_buffer[..]);
-    let request_line = http_request.lines().next().unwrap_or("");
+        // Parse the path from the request line
+        let request_path = request_line
+          .split_whitespace()
+          .nth(1)
+          .unwrap_or("/");
 
-    // Parse the path from the request line
-    let request_path = request_line
-        .split_whitespace()
-        .nth(1)
-        .unwrap_or("/");
-
-    // Get the file path and sanitize it
-    let file_path = get_file_path(request_path);
-
-    match serve_file(&file_path) {
-      Ok(contents) => {
-          let response = format!(
-              "HTTP/1.1 200 OK\r\n\r\n{}",
-              contents
-          );
-          client_stream.write_all(response.as_bytes()).unwrap();
-      }
-      Err(_) => {
-          let response = "HTTP/1.1 404 Not Found\r\n\r\nNot Found";
-          client_stream.write_all(response.as_bytes()).unwrap();
+        // Get the file path and sanitize it
+        match get_file_path(request_path) {
+            Ok(file_path) => {
+                match fs::read_to_string(&file_path) {
+                    Ok(contents) => {
+                        let response = format!(
+                            "HTTP/1.1 200 OK\r\n\r\n{}",
+                            contents
+                        );
+                        let _ = client_stream.write_all(response.as_bytes());
+                    }
+                    Err(_) => {
+                        let response = "HTTP/1.1 404 Not Found\r\n\r\nNot Found";
+                        let _ = client_stream.write_all(response.as_bytes());
+                    }
+                }
+            }
+            Err(_e) => {
+                let response = "HTTP/1.1 403 Forbidden\r\n\r\nAccess denied";
+                let _ = client_stream.write_all(response.as_bytes());
+            }
         }
-    }
 
-    client_stream.flush().unwrap();
+        let _ = client_stream.flush();
+    }
 }
 
-fn get_file_path(request_path: &str) -> PathBuf {
-    let mut path = PathBuf::from("www");
+fn get_file_path(request_path: &str) -> Result<PathBuf, std::io::Error> {
+  // Start with the www directory as the root
+  let mut base_path = fs::canonicalize("www")?;
 
-    let clean_path = request_path.trim_start_matches('/');
+  // Clean the requested path
+  let clean_path = request_path.trim_start_matches('/');
 
-    // Following common web server conventions
-    if clean_path.is_empty() {
-        path.push("index.html");
-    } else {
-        path.push(clean_path);
-    }
-    if path.is_dir() {
-        path.push("index.html");
-    }
+  // Handle root path request
+  if clean_path.is_empty() {
+      base_path.push("index.html");
+      return Ok(base_path);
+  }
 
-    path
+  // Check for suspicious patterns
+  if clean_path.contains("..") ||
+     clean_path.contains("//") ||
+     clean_path.contains('\\') {
+      return Err(std::io::Error::new(
+          std::io::ErrorKind::PermissionDenied,
+          "Invalid path characters detected"
+      ));
+  }
+
+  // Create the full path
+  let mut full_path = base_path.clone();
+  full_path.push(clean_path);
+
+  // Verify the path is still within www directory
+  match fs::canonicalize(&full_path) {
+      Ok(canonical_path) => {
+          if canonical_path.starts_with(base_path) {
+              Ok(full_path)
+          } else {
+              Err(std::io::Error::new(
+                  std::io::ErrorKind::PermissionDenied,
+                  "Path escapes www directory"
+              ))
+          }
+      }
+      Err(_) => Err(std::io::Error::new(
+          std::io::ErrorKind::NotFound,
+          "Invalid path"
+      ))
+  }
 }
 
-fn serve_file(file_path: &Path) -> std::io::Result<String> {
-    let canonical_path = fs::canonicalize(file_path)?;
-    let www_path = fs::canonicalize("www")?;
-
-    if !canonical_path.starts_with(www_path) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "Access denied"
-        ));
-    }
-
-    fs::read_to_string(file_path)
-}
-
-fn main() {
-    fs::create_dir_all("www").unwrap();
+fn main() -> Result<(), std::io::Error> {
+    fs::create_dir_all("www")?;
 
     // Create a TCP listener bound to localhost:80
-    let tcp_listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    let tcp_listener = TcpListener::bind("127.0.0.1:80")?;
     println!("Server listening on port 80");
     println!("Serving files from ./www directory");
 
@@ -96,5 +113,7 @@ fn main() {
             }
         }
     }
+
+    Ok(())
 }
 

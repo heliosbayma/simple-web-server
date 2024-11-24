@@ -12,6 +12,16 @@ Step 1:
 - Returns the requested path in the response
 - Single-threaded, handling one connection at a time
 
+Step 2.a:
+
+- Handles static files in the `www` directory
+- Adds proper path sanitization of the requested path to avoid directory traversal attacks
+- Adds error handling
+- Changed approach to handle file requests by handling them together with the root path request
+  This simplifies error handling and allow better control over the response and more DRY
+  Less cleaner separation of concerns but ok for what we need
+
+
 ## Prerequisites
 
 - Rust (latest stable version)
