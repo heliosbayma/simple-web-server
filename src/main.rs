@@ -37,8 +37,13 @@ fn handle_connection(mut client_stream: TcpStream) {
                     }
                 }
             }
-            Err(_e) => {
-                let response = "HTTP/1.1 403 Forbidden\r\n\r\nAccess denied";
+            Err(e) => {
+                // Check the error kind to differentiate between 403 and 404
+                let response = match e.kind() {
+                    std::io::ErrorKind::NotFound => "HTTP/1.1 404 Not Found\r\n\r\nNot Found",
+                    std::io::ErrorKind::PermissionDenied => "HTTP/1.1 403 Forbidden\r\n\r\nAccess denied",
+                    _ => "HTTP/1.1 500 Internal Server Error\r\n\r\nServer Error"
+                };
                 let _ = client_stream.write_all(response.as_bytes());
             }
         }
@@ -48,49 +53,49 @@ fn handle_connection(mut client_stream: TcpStream) {
 }
 
 fn get_file_path(request_path: &str) -> Result<PathBuf, std::io::Error> {
-  // Start with the www directory as the root
-  let mut base_path = fs::canonicalize("www")?;
+    // Check for suspicious patterns BEFORE any cleaning
+    if request_path.contains("..") ||
+       request_path.contains("//") ||
+       request_path.contains('\\') {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "Invalid path characters detected"
+        ));
+    }
 
-  // Clean the requested path
-  let clean_path = request_path.trim_start_matches('/');
+    // Start with the www directory as the root
+    let mut base_path = fs::canonicalize("www")?;
 
-  // Handle root path request
-  if clean_path.is_empty() {
-      base_path.push("index.html");
-      return Ok(base_path);
-  }
+    // Clean the requested path
+    let clean_path = request_path.trim_start_matches('/');
 
-  // Check for suspicious patterns
-  if clean_path.contains("..") ||
-     clean_path.contains("//") ||
-     clean_path.contains('\\') {
-      return Err(std::io::Error::new(
-          std::io::ErrorKind::PermissionDenied,
-          "Invalid path characters detected"
-      ));
-  }
+    // Handle root path request
+    if clean_path.is_empty() {
+        base_path.push("index.html");
+        return Ok(base_path);
+    }
 
-  // Create the full path
-  let mut full_path = base_path.clone();
-  full_path.push(clean_path);
+    // Create the full path
+    let mut full_path = base_path.clone();
+    full_path.push(clean_path);
 
-  // Verify the path is still within www directory
-  match fs::canonicalize(&full_path) {
-      Ok(canonical_path) => {
-          if canonical_path.starts_with(base_path) {
-              Ok(full_path)
-          } else {
-              Err(std::io::Error::new(
-                  std::io::ErrorKind::PermissionDenied,
-                  "Path escapes www directory"
-              ))
-          }
-      }
-      Err(_) => Err(std::io::Error::new(
-          std::io::ErrorKind::NotFound,
-          "Invalid path"
-      ))
-  }
+    // Verify the path is still within www directory
+    match fs::canonicalize(&full_path) {
+        Ok(canonical_path) => {
+            if canonical_path.starts_with(base_path) {
+                Ok(full_path)
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Path escapes www directory"
+                ))
+            }
+        }
+        Err(_) => Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Invalid path"
+        ))
+    }
 }
 
 fn main() -> Result<(), std::io::Error> {
