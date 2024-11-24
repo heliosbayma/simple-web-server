@@ -51,26 +51,68 @@ cargo build
 sudo cargo run
 ```
 
-2. In another terminal, you can test the server using curl:
+2. In another terminal, you can test the server using curl. Here are some example requests:
 
+Normal requests:
 ```bash
-curl http://localhost/
-curl http://localhost/hello
-curl http://localhost/test/path
+# Access the root page
+curl -i http://localhost/
+
+# Access non-existent pages
+curl -i http://localhost/hello
+curl -i http://localhost/test/path
 ```
 
-Example output:
+Security test requests:
+```bash
+# Basic path traversal attempt
+curl -i http://localhost/../../../etc/passwd
 
+# URL-encoded path traversal
+curl -i http://localhost/..%2F..%2F..%2Fetc%2Fpasswd
+
+# Double-encoded path traversal
+curl -i http://localhost/%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd
+
+# Mixed path traversal
+curl -i http://localhost/static/../../../etc/passwd
+```
+
+Example responses:
+
+Successful request:
 ```text
-Requested path: /
-Requested path: /hello
-Requested path: /test/path
+HTTP/1.1 200 OK
+Content-Type: text/html
+Content-Length: 345
+
+<html>...</html>
+```
+
+Missing file:
+```text
+HTTP/1.1 404 Not Found
+Content-Type: text/plain
+Content-Length: 9
+
+Not Found
+```
+
+Blocked security attempts:
+```text
+HTTP/1.1 400 Bad Request
+Content-Type: text/plain
+Content-Length: 39
+
+Path traversal attempts are not permitted
 ```
 
 ## Project Structure
 
 ```text
 http_server/
+├── www/             # Static files
+│   ├── index.html
 ├── src/
 │   └── main.rs      # Server implementation
 ├── Cargo.toml       # Project dependencies and metadata
@@ -82,7 +124,6 @@ http_server/
 - Handles only one connection at a time
 - Only processes GET requests
 - No support for HTTP headers or request bodies
-- No proper error handling or logging
 - No configuration options (fixed to localhost:80)
 
 ## Future Improvements
