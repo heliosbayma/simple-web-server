@@ -20,6 +20,10 @@ Step 2.a:
 - Changed approach to handle file requests by handling them together with the root path request
   This simplifies error handling and allow better control over the response and more DRY
   Less cleaner separation of concerns but ok for what we need
+- Increases request buffer size to 4096 bytes
+- Adds parsing of HTTP headers
+- Adds HTTP status codes to responses
+- Cleaner approach to path sanitization
 
 
 ## Prerequisites
@@ -123,7 +127,6 @@ http_server/
 
 - Handles only one connection at a time
 - Only processes GET requests
-- No support for HTTP headers or request bodies
 - No configuration options (fixed to localhost:80)
 
 ## Future Improvements

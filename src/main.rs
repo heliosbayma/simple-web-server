@@ -5,51 +5,82 @@ use std::path::{PathBuf};
 
 // Handle incoming connections
 fn handle_connection(mut client_stream: TcpStream) {
-    // Create a buffer to read the request into, 1024 bytes being enough for basic requests
-    let mut request_buffer = [0; 1024];
+    let mut request_buffer = [0; 4096];
 
-    // Read the request into the buffer
-    if let Ok(_) = client_stream.read(&mut request_buffer) {
-        // Convert buffer to string and get the first line
-        let http_request = String::from_utf8_lossy(&request_buffer[..]);
-        let request_line = http_request.lines().next().unwrap_or("");
+    if let Ok(bytes_read) = client_stream.read(&mut request_buffer) {
+        // Convert buffer to string using only the bytes that were read
+        let http_request = String::from_utf8_lossy(&request_buffer[..bytes_read]);
+        let mut lines = http_request.lines();
 
-        // Parse the path from the request line
-        let request_path = request_line
-          .split_whitespace()
-          .nth(1)
-          .unwrap_or("/");
+        // Parse request line
+        let request_line = lines.next().unwrap_or("");
+        let mut request_parts = request_line.split_whitespace();
+        request_parts.next(); // Skip the method
+        let request_path = request_parts.next().unwrap_or("/");
 
-        // Get the file path and sanitize it
+        // Parse headers
+        let mut headers = std::collections::HashMap::new();
+        while let Some(line) = lines.next() {
+            if line.is_empty() { break; }  // Empty line separates headers from body
+            if let Some((key, value)) = line.split_once(':') {
+                headers.insert(
+                    key.trim().to_lowercase(),
+                    value.trim().to_string()
+                );
+            }
+        }
+
+        // Handle the request
         match get_file_path(request_path) {
             Ok(file_path) => {
                 match fs::read_to_string(&file_path) {
                     Ok(contents) => {
                         let response = format!(
-                            "HTTP/1.1 200 OK\r\n\r\n{}",
+                            "HTTP/1.1 200 OK\r\n\
+                            Content-Type: text/html\r\n\
+                            Content-Length: {}\r\n\
+                            \r\n\
+                            {}",
+                            contents.len(),
                             contents
                         );
                         let _ = client_stream.write_all(response.as_bytes());
                     }
-                    Err(_) => {
-                        let response = "HTTP/1.1 404 Not Found\r\n\r\nNot Found";
-                        let _ = client_stream.write_all(response.as_bytes());
-                    }
+                    Err(_) => send_error_response(&mut client_stream, 404)
                 }
             }
             Err(e) => {
-                // Check the error kind to differentiate between 403 and 404
-                let response = match e.kind() {
-                    std::io::ErrorKind::NotFound => "HTTP/1.1 404 Not Found\r\n\r\nNot Found",
-                    std::io::ErrorKind::PermissionDenied => "HTTP/1.1 403 Forbidden\r\n\r\nAccess denied",
-                    _ => "HTTP/1.1 500 Internal Server Error\r\n\r\nServer Error"
+                let status = match e.kind() {
+                    std::io::ErrorKind::NotFound => 404,
+                    std::io::ErrorKind::PermissionDenied => 403,
+                    _ => 500
                 };
-                let _ = client_stream.write_all(response.as_bytes());
+                send_error_response(&mut client_stream, status);
             }
         }
 
         let _ = client_stream.flush();
     }
+}
+
+fn send_error_response(client_stream: &mut TcpStream, status: u16) {
+    let (status_line, message) = match status {
+        404 => ("404 Not Found", "Not Found"),
+        403 => ("403 Forbidden", "Access denied"),
+        _ => ("500 Internal Server Error", "Server Error")
+    };
+
+    let response = format!(
+        "HTTP/1.1 {}\r\n\
+        Content-Type: text/plain\r\n\
+        Content-Length: {}\r\n\
+        \r\n\
+        {}",
+        status_line,
+        message.len(),
+        message
+    );
+    let _ = client_stream.write_all(response.as_bytes());
 }
 
 fn get_file_path(request_path: &str) -> Result<PathBuf, std::io::Error> {
