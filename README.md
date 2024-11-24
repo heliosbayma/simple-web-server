@@ -35,6 +35,13 @@ Step 2.b (going out of scope for learning purposes):
 - Improved error handling: also a WIP
 - Breaking main file into modules as it was getting too big
 
+Step 3
+
+- Handle multiple requests concurrently with two approaches:
+  - Using a thread pool ([std::thread](https://doc.rust-lang.org/std/thread/))
+  - Using Tokio for async operations
+- Added logging
+
 
 ## Prerequisites
 
