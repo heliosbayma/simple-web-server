@@ -2,7 +2,6 @@
 
 A weekend exercise exploring Rust for the first time.
 Inspired by [Web Server Coding Challenge](https://codingchallenges.fyi/challenges/challenge-webserver/)
-Not worried about performance neither reinventing the wheel... for now its about exploring the language and getting confused.
 
 ## Features
 
@@ -76,6 +75,7 @@ sudo cargo run
 2. In another terminal, you can test the server using curl. Here are some example requests:
 
 Normal requests:
+
 ```bash
 # Access the root page
 curl -i http://localhost/
@@ -85,7 +85,18 @@ curl -i http://localhost/hello
 curl -i http://localhost/test/path
 ```
 
+Test concurrent requests
+
+```bash
+# Make the test script executable
+chmod +x scripts/test_concurrent.sh
+
+# Run concurrent test (sends 10 simultaneous requests)
+./scripts/test_concurrent.sh
+```
+
 Security test requests:
+
 ```bash
 # Basic path traversal attempt
 curl -i http://localhost/../../../etc/passwd
@@ -103,6 +114,7 @@ curl -i http://localhost/static/../../../etc/passwd
 Example responses:
 
 Successful request:
+
 ```text
 HTTP/1.1 200 OK
 Content-Type: text/html
@@ -112,6 +124,7 @@ Content-Length: 345
 ```
 
 Missing file:
+
 ```text
 HTTP/1.1 404 Not Found
 Content-Type: text/plain
@@ -121,6 +134,7 @@ Not Found
 ```
 
 Blocked security attempts:
+
 ```text
 HTTP/1.1 400 Bad Request
 Content-Type: text/plain
@@ -128,6 +142,7 @@ Content-Length: 39
 
 Path traversal attempts are not permitted
 ```
+
 
 ## Project Structure
 
