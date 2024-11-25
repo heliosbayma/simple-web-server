@@ -56,7 +56,7 @@ Step 3
 
 ```bash
 git clone https://github.com/heliosbayma/simple-web-server.git
-cd http_server
+cd simple-web-server
 ```
 
 2. Build the project:
