@@ -1,9 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::Duration;
 
 pub const MAX_REQUEST_SIZE: usize = 8192;
-pub const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
 const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
 pub fn get_file_path(request_path: &str) -> Result<PathBuf, std::io::Error> {

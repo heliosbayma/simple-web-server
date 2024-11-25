@@ -1,28 +1,21 @@
-use std::io::{ Read, Write };
-use std::net::TcpStream;
-use std::fs;
-use std::thread;
-use std::time::Duration;
-use std::time::SystemTime;
+use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+// use tokio::time::{sleep, Duration};
 
-use crate::http::{ HttpResponse, send_error_response };
-use crate::utils::{ MAX_REQUEST_SIZE, CONNECTION_TIMEOUT, get_file_path };
+use crate::http::{HttpResponse, send_error_response};
+use crate::utils::{MAX_REQUEST_SIZE, get_file_path};
 
-pub fn handle_connection(
+pub async fn handle_connection(
   mut client_stream: TcpStream
 ) -> Result<(), std::io::Error> {
   // Get and log the thread ID
-  let thread_id = thread::current().id();
+  let thread_id = tokio::task::id();
   let start_time = SystemTime::now();
   // end of logging
 
-  // Set timeout
-  client_stream.set_read_timeout(Some(CONNECTION_TIMEOUT))?;
-  client_stream.set_write_timeout(Some(CONNECTION_TIMEOUT))?;
-
   let mut request_buffer = [0; MAX_REQUEST_SIZE];
-
-  let bytes_read = client_stream.read(&mut request_buffer)?;
+  let bytes_read = client_stream.read(&mut request_buffer).await?;
 
   // Convert buffer to string using only the bytes that were read
   let http_request = String::from_utf8_lossy(&request_buffer[..bytes_read]);
@@ -36,7 +29,7 @@ pub fn handle_connection(
 
   println!(
     "[{:?}] [{:?}] Starting new request",
-    start_time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+    start_time.duration_since(UNIX_EPOCH).unwrap().as_secs(),
     thread_id
   );
 
@@ -59,12 +52,12 @@ pub fn handle_connection(
   // Handle the request
   match get_file_path(request_path) {
     Ok(file_path) => {
-      match fs::read(&file_path) {
+      match tokio::fs::read(&file_path).await {
         Ok(contents) => {
           let response = HttpResponse::new(200, "OK", "text/html", contents);
-          client_stream.write_all(&response.to_bytes())?;
+          client_stream.write_all(&response.to_bytes()).await?;
         }
-        Err(_) => send_error_response(&mut client_stream, 404)?,
+        Err(_) => send_error_response(&mut client_stream, 404).await?,
       }
     }
     Err(e) => {
@@ -73,7 +66,7 @@ pub fn handle_connection(
         std::io::ErrorKind::PermissionDenied => 403,
         _ => 500,
       };
-      send_error_response(&mut client_stream, status)?;
+      send_error_response(&mut client_stream, status).await?;
     }
   }
 
@@ -84,6 +77,6 @@ pub fn handle_connection(
     SystemTime::now().duration_since(start_time).unwrap()
   );
 
-  client_stream.flush()?;
+  client_stream.flush().await?;
   Ok(())
 }

@@ -1,5 +1,5 @@
-use std::io::Write;
-use std::net::TcpStream;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 
 pub struct HttpResponse {
   status_code: u16,
@@ -26,9 +26,9 @@ impl HttpResponse {
   pub fn to_bytes(&self) -> Vec<u8> {
     let headers = format!(
       "HTTP/1.1 {} {}\r\n\
-           Content-Type: {}\r\n\
-           Content-Length: {}\r\n\
-           \r\n",
+      Content-Type: {}\r\n\
+      Content-Length: {}\r\n\
+      \r\n",
       self.status_code,
       self.status_text,
       self.content_type,
@@ -41,7 +41,7 @@ impl HttpResponse {
   }
 }
 
-pub fn send_error_response(
+pub async fn send_error_response(
   client_stream: &mut TcpStream,
   status: u16
 ) -> Result<(), std::io::Error> {
@@ -57,6 +57,6 @@ pub fn send_error_response(
     "text/plain",
     message.as_bytes().to_vec()
   );
-  client_stream.write_all(&response.to_bytes())?;
+  client_stream.write_all(&response.to_bytes()).await?;
   Ok(())
 }

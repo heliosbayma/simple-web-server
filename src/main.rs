@@ -2,31 +2,28 @@ mod http;
 mod server;
 mod utils;
 
-use std::net::TcpListener;
 use std::fs;
-use threadpool::ThreadPool;
+use tokio::net::TcpListener;
 
 const BIND_ADDRESS: &str = "127.0.0.1:80";
 const WWW_DIR: &str = "./www";
 
-fn main() -> Result<(), std::io::Error> {
+#[tokio::main]
+async fn main() -> Result<(), std::io::Error> {
   fs::create_dir_all(WWW_DIR)?;
 
-  let tcp_listener = TcpListener::bind(BIND_ADDRESS)?;
+  let tcp_listener = TcpListener::bind(BIND_ADDRESS).await?;
   println!("Server listening on port 80");
   println!("Serving files from {} directory", WWW_DIR);
 
-  let pool = ThreadPool::new(4);
-  println!("Thread pool created with 4 workers");
+  loop {
+    let (socket, _) = tcp_listener.accept().await?;
 
-  for incoming_stream in tcp_listener.incoming() {
-    let client_stream = incoming_stream?;
-    pool.execute(move || {
-      if let Err(e) = server::handle_connection(client_stream) {
+    // Spawn a new task to handle the connection
+    tokio::spawn(async move {
+      if let Err(e) = server::handle_connection(socket).await {
         eprintln!("Error handling connection: {}", e);
       }
     });
   }
-
-  Ok(())
 }
