@@ -4,7 +4,7 @@ mod utils;
 
 use std::net::TcpListener;
 use std::fs;
-use std::thread;
+use threadpool::ThreadPool;
 
 const BIND_ADDRESS: &str = "127.0.0.1:80";
 const WWW_DIR: &str = "./www";
@@ -16,29 +16,15 @@ fn main() -> Result<(), std::io::Error> {
   println!("Server listening on port 80");
   println!("Serving files from {} directory", WWW_DIR);
 
+  let pool = ThreadPool::new(4);
+
   for incoming_stream in tcp_listener.incoming() {
-    match incoming_stream {
-      Ok(client_stream) => {
-        println!("New connection established!");
-
-        // Spawn a new thread for each connection
-        thread::spawn(move || {
-          let thread_id = thread::current().id();
-          println!("Handling connection in thread: {:?}", thread_id);
-
-          if let Err(e) = server::handle_connection(client_stream) {
-            eprintln!(
-              "Error handling connection in thread {:?}: {}",
-              thread_id,
-              e
-            );
-          }
-        });
+    let client_stream = incoming_stream?;
+    pool.execute(move || {
+      if let Err(e) = server::handle_connection(client_stream) {
+        eprintln!("Error handling connection: {}", e);
       }
-      Err(e) => {
-        eprintln!("Error accepting connection: {}", e);
-      }
-    }
+    });
   }
 
   Ok(())

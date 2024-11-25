@@ -143,7 +143,6 @@ Content-Length: 39
 Path traversal attempts are not permitted
 ```
 
-
 ## Project Structure
 
 ```text
