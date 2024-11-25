@@ -3,6 +3,7 @@ use std::net::TcpStream;
 use std::fs;
 use std::thread;
 use std::time::Duration;
+use std::time::SystemTime;
 
 use crate::http::{ HttpResponse, send_error_response };
 use crate::utils::{ MAX_REQUEST_SIZE, CONNECTION_TIMEOUT, get_file_path };
@@ -12,7 +13,7 @@ pub fn handle_connection(
 ) -> Result<(), std::io::Error> {
   // Get and log the thread ID
   let thread_id = thread::current().id();
-  println!("Starting connection handling in thread: {:?}", thread_id);
+  let start_time = SystemTime::now();
   // end of logging
 
   // Set timeout
@@ -33,9 +34,13 @@ pub fn handle_connection(
   request_parts.next(); // Skip the method
   let request_path = request_parts.next().unwrap_or("/");
 
-  println!("Path: {} - Thread Id: {:?}", request_path, thread_id);
+  println!(
+    "[{:?}] [{:?}] Starting new request",
+    start_time.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+    thread_id
+  );
 
-  // Add the 5-second delay
+  // Add the 5-second delay (uncomment lines below for testing)
   // println!("Thread {:?} sleeping for 5 seconds...", thread_id);
   // thread::sleep(Duration::from_secs(5));
   // println!("Thread {:?} woke up, processing request...", thread_id);
@@ -71,6 +76,13 @@ pub fn handle_connection(
       send_error_response(&mut client_stream, status)?;
     }
   }
+
+  println!(
+    "[{:?}] [{:?}] Request completed in {:?}",
+    SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+    thread_id,
+    SystemTime::now().duration_since(start_time).unwrap()
+  );
 
   client_stream.flush()?;
   Ok(())
