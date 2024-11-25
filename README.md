@@ -25,7 +25,7 @@ Step 2.a:
 - Adds HTTP status codes to responses
 - Cleaner approach to path sanitization
 
-Step 2.b (going out of scope for learning purposes):
+Step 2.b (Step 4 in the challenge):
 
 - Connection timeout
 - Added structs and impl blocks for HttpResponse
@@ -38,8 +38,9 @@ Step 3
 
 - Handle multiple requests concurrently with three approaches:
   - Using threads spawn (not realistic for production)
-  - [TBD] Using a thread pool
-  - [TBD] Using Tokio for async operations
+  - Using a thread pool
+  - Using Tokio for async operations (current)
+    - remove set timoeout from client_stream (tokio's default is used)
 - Added logging
 
 
@@ -147,15 +148,16 @@ Path traversal attempts are not permitted
 
 ```text
 http_server/
-├── www/             # Static files
+├── www/                   # Static files
 │   └── index.html
 ├── src/
-│   ├── main.rs      # Server entry point
-│   ├── http.rs      # HTTP response struct and methods
-│   ├── server.rs    # Server implementation
-│   └── utils.rs     # Utility functions
-├── Cargo.toml       # Project dependencies and metadata
-└── README.md        # This file
+│   ├── main.rs            # Server entry point
+│   ├── http.rs            # HTTP response struct and methods
+│   ├── server.rs          # Server implementation
+│   ├── utils.rs           # Utility functions
+│   └── test_concurrent.sh # Test script for concurrent requests
+├── Cargo.toml             # Project dependencies and metadata
+└── README.md              # This file
 ```
 
 ## Current Limitations (by design)
@@ -166,8 +168,8 @@ http_server/
 ## Future Improvements
 
 - MIME type mapping (lazy_static! ???)
-- Add logging
 - Add tests
+- Support running code to generate dynamic content
 
 
 see [Web Server Coding Challenge](https://codingchallenges.fyi/challenges/challenge-webserver/)
