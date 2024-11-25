@@ -2,6 +2,7 @@ use std::io::{ Read, Write };
 use std::net::TcpStream;
 use std::fs;
 use std::thread;
+use std::time::Duration;
 
 use crate::http::{ HttpResponse, send_error_response };
 use crate::utils::{ MAX_REQUEST_SIZE, CONNECTION_TIMEOUT, get_file_path };
@@ -9,6 +10,11 @@ use crate::utils::{ MAX_REQUEST_SIZE, CONNECTION_TIMEOUT, get_file_path };
 pub fn handle_connection(
   mut client_stream: TcpStream
 ) -> Result<(), std::io::Error> {
+  // Get and log the thread ID
+  let thread_id = thread::current().id();
+  println!("Starting connection handling in thread: {:?}", thread_id);
+  // end of logging
+
   // Set timeout
   client_stream.set_read_timeout(Some(CONNECTION_TIMEOUT))?;
   client_stream.set_write_timeout(Some(CONNECTION_TIMEOUT))?;
@@ -16,6 +22,7 @@ pub fn handle_connection(
   let mut request_buffer = [0; MAX_REQUEST_SIZE];
 
   let bytes_read = client_stream.read(&mut request_buffer)?;
+
   // Convert buffer to string using only the bytes that were read
   let http_request = String::from_utf8_lossy(&request_buffer[..bytes_read]);
   let mut lines = http_request.lines();
@@ -26,8 +33,12 @@ pub fn handle_connection(
   request_parts.next(); // Skip the method
   let request_path = request_parts.next().unwrap_or("/");
 
-  println!("Path: {}", request_path);
-  println!("Thread Id: {:?}", thread::current().id());
+  println!("Path: {} - Thread Id: {:?}", request_path, thread_id);
+
+  // Add the 5-second delay
+  // println!("Thread {:?} sleeping for 5 seconds...", thread_id);
+  // thread::sleep(Duration::from_secs(5));
+  // println!("Thread {:?} woke up, processing request...", thread_id);
 
   // Parse headers
   let mut headers = std::collections::HashMap::new();

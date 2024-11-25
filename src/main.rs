@@ -17,6 +17,7 @@ fn main() -> Result<(), std::io::Error> {
   println!("Serving files from {} directory", WWW_DIR);
 
   let pool = ThreadPool::new(4);
+  println!("Thread pool created with 4 workers");
 
   for incoming_stream in tcp_listener.incoming() {
     let client_stream = incoming_stream?;

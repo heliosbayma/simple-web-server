@@ -160,7 +160,6 @@ http_server/
 
 ## Current Limitations (by design)
 
-- Handles only one connection at a time
 - Only processes GET requests
 - No configuration options (fixed to localhost:80)
 
